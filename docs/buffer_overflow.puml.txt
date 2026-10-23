@@ -1,0 +1,23 @@
+@startuml
+autonumber
+skinparam style strictuml
+
+actor "Календарь событий" as Calendar
+participant "Диспетчер постановки (ДП)" as DP
+queue "Буферная память (БП)" as Buffer
+participant "Модуль статистики" as Stats
+
+== Краевой кейс: Переполнение буфера и отказ новой заявке (Д1ОО5) ==
+Calendar -> DP: Триггер: поступила новая заявка (i, N)
+DP -> Stats: Учесть сгенерированную заявку от источника Иi
+Stats --> DP: OK
+
+DP -> Buffer: hasFreeSpace()
+Buffer --> DP: false (все ячейки БП заняты)
+
+DP -> Stats: Зафиксировать отказ для новой заявки (i, N) [Д1ОО5]
+Stats --> DP: Счётчик отказов источника Иi увеличен
+
+DP -> DP: Новая заявка (i, N) покидает систему\n(состояние БП не изменяется) [Д1ОО5]
+DP --> Calendar: Обработка события завершена
+@enduml

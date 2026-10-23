@@ -1,0 +1,118 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+class Request {
+    - sourceId: int
+    - requestNumber: int
+    - creationTime: double
+    - bufferEntryTime: double
+    - serviceStartTime: double
+    - inCurrentBatch: boolean
+    + Request(sourceId: int, requestNumber: int, creationTime: double)
+    + getSourceId(): int
+    + getRequestNumber(): int
+    + getCreationTime(): double
+    + isInCurrentBatch(): boolean
+    + setInCurrentBatch(inBatch: boolean): void
+}
+
+class Source {
+    - sourceId: int
+    - lambda: double
+    - generatedCount: int
+    + Source(sourceId: int, lambda: double)
+    + generateNextRequest(currentTime: double): Request
+    + getNextGenerationInterval(): double
+    + getSourceId(): int
+}
+
+class Buffer {
+    - capacity: int
+    - queue: List<Request>
+    - activeBatchSourceId: Integer
+    - activeBatchSize: int
+    + Buffer(capacity: int)
+    + hasFreeSpace(): boolean
+    + isEmpty(): boolean
+    + addRequestInOrder(request: Request): boolean
+    + hasActiveBatch(): boolean
+    + formNewBatchByPriority(): void
+    + extractNextFromBatch(): Request
+    + shiftQueueFrom(index: int): void
+    + getStateSnapshot(): List<Request>
+}
+
+class Device {
+    - deviceId: int
+    - minServiceTime: double
+    - maxServiceTime: double
+    - busy: boolean
+    - currentRequest: Request
+    - releaseTime: double
+    - totalBusyTime: double
+    + Device(deviceId: int, minTime: double, maxTime: double)
+    + isBusy(): boolean
+    + assignRequest(request: Request, currentTime: double): double
+    + releaseDevice(currentTime: double): Request
+    + getDeviceId(): int
+    + getTotalBusyTime(): double
+}
+
+class PlacementDispatcher {
+    - buffer: Buffer
+    - statistics: StatisticsCollector
+    + PlacementDispatcher(buffer: Buffer, statistics: StatisticsCollector)
+    + placeRequest(request: Request, currentTime: double): boolean
+}
+
+class SelectionDispatcher {
+    - buffer: Buffer
+    - devices: List<Device>
+    - statistics: StatisticsCollector
+    + SelectionDispatcher(buffer: Buffer, devices: List<Device>, statistics: StatisticsCollector)
+    + tryScheduleNext(currentTime: double): Event
+    - findFreeDeviceByPriority(): Device
+}
+
+class StatisticsCollector {
+    - generatedBySource: Map<Integer, Integer>
+    - rejectedBySource: Map<Integer, Integer>
+    - waitingTimesBySource: Map<Integer, List<Double>>
+    - serviceTimesBySource: Map<Integer, List<Double>>
+    + recordGenerated(sourceId: int): void
+    + recordRejected(request: Request): void
+    + recordWaitingTime(sourceId: int, waitTime: double): void
+    + recordServiceCompletion(request: Request, serviceTime: double): void
+    + buildSummaryTable(totalSimulationTime: double): SummaryReport
+}
+
+class SimulationController {
+    - sources: List<Source>
+    - devices: List<Device>
+    - buffer: Buffer
+    - placementDispatcher: PlacementDispatcher
+    - selectionDispatcher: SelectionDispatcher
+    - statistics: StatisticsCollector
+    - eventCalendar: PriorityQueue<Event>
+    - currentTime: double
+    + runStep(): void
+    + runAuto(): void
+}
+
+SimulationController *-- "1..*" Source
+SimulationController *-- "1..*" Device
+SimulationController *-- "1" Buffer
+SimulationController *-- "1" PlacementDispatcher
+SimulationController *-- "1" SelectionDispatcher
+SimulationController *-- "1" StatisticsCollector
+
+PlacementDispatcher --> "1" Buffer : -buffer
+PlacementDispatcher --> "1" StatisticsCollector : -statistics
+SelectionDispatcher --> "1" Buffer : -buffer
+SelectionDispatcher --> "1..*" Device : -devices
+SelectionDispatcher --> "1" StatisticsCollector : -statistics
+
+Buffer o-- "0..*" Request : -queue
+Device o-- "0..1" Request : -currentRequest
+Source ..> Request : creates
+@enduml

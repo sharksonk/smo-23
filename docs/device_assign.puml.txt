@@ -1,0 +1,26 @@
+@startuml
+autonumber
+skinparam style strictuml
+
+actor "Календарь событий" as Calendar
+participant "Диспетчер выбора (ДВ)" as DV
+participant "Прибор П1" as D1
+participant "Прибор П2" as D2
+participant "Прибор Пk" as Dk
+
+== Поиск свободного прибора по приоритету номера (Д2П1) и обслуживание (ПЗ2) ==
+Calendar -> DV: Триггер: запрос на постановку заявки из пакета
+DV -> D1: isBusy() — проверка прибора №1 [Д2П1]
+D1 --> DV: true (прибор П1 занят)
+
+DV -> D2: isBusy() — проверка прибора №2 [Д2П1]
+D2 --> DV: true (прибор П2 занят)
+
+DV -> Dk: isBusy() — проверка первого свободного прибора №k [Д2П1]
+Dk --> DV: false (прибор Пk свободен)
+
+DV -> Dk: assignRequest(request, Tтек) [Д2П1]
+Dk -> Dk: Перевод в статус BUSY,\nгенерация Tобсл = Uniform(Tmin, Tmax) [ПЗ2]
+Dk --> DV: Время освобождения = Tтек + Tобсл
+DV --> Calendar: Запланировать событие освобождения Пk
+@enduml

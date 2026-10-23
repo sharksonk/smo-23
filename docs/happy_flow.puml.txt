@@ -1,0 +1,33 @@
+@startuml
+autonumber
+skinparam style strictuml
+
+actor "Календарь событий" as Calendar
+participant "Источник (ИБ)" as Source
+participant "Диспетчер постановки (ДП)" as DP
+queue "Буферная память (БП)" as Buffer
+participant "Диспетчер выбора (ДВ)" as DV
+participant "Прибор П1" as Device1
+
+== Happy Flow: Буфер свободен, Прибор П1 свободен ==
+Calendar -> Source: Событие генерации заявки (Tвх)
+Source -> Source: Создание заявки и расчёт Tвх_next [ИЗ1]
+Source --> Calendar: Запланирована следующая генерация
+
+Calendar -> DP: Триггер: поступила новая заявка
+DP -> Buffer: hasFreeSpace()
+Buffer --> DP: true (место есть)
+DP -> Buffer: Поставить заявку в конец очереди [Д1ОЗ2]
+Buffer --> DP: Заявка помещена в ячейку 1
+DP --> Calendar: Постановка завершена
+
+Calendar -> DV: Триггер: в БП появилась заявка
+DV -> Device1: Проверка статуса П1 (выбор по приоритету №1) [Д2П1]
+Device1 --> DV: Свободен (FREE)
+DV -> Buffer: Сформировать пакет и извлечь заявку со сдвигом [Д2Б5, Д1ОЗ2]
+Buffer --> DV: Заявка получена
+DV -> Device1: Назначить заявку на обслуживание [Д2П1]
+Device1 -> Device1: Расчёт Tобсл по равномерному закону [ПЗ2]
+Device1 --> DV: Занят до Tтек + Tобсл
+DV --> Calendar: Запланировано освобождение прибора П1
+@enduml

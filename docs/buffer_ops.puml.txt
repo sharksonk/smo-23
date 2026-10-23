@@ -1,0 +1,30 @@
+@startuml
+autonumber
+skinparam style strictuml
+
+participant "Диспетчер постановки (ДП)" as DP
+queue "Буферная память (БП)" as Buffer
+participant "Диспетчер выбора (ДВ)" as DV
+
+== Постановка в буфер в порядке поступления (Д1ОЗ2) ==
+DP -> Buffer: addRequestInOrder(request) [Д1ОЗ2]
+Buffer -> Buffer: Запись заявки на первое свободное место\nв конце очереди (индекс K)
+Buffer --> DP: Заявка сохранена в позиции K
+
+== Пакетная выборка по приоритету источника со сдвигом (Д2Б5, Д1ОЗ2) ==
+DV -> Buffer: hasActiveBatch() [Д2Б5]
+alt Активного пакета нет (или предыдущий пакет исчерпан)
+    Buffer --> DV: false
+    DV -> Buffer: formNewBatchByPriority() [Д2Б5]
+    Buffer -> Buffer: Поиск минимального номера источника в БП (И_prio)\nи пометка всех его текущих заявок как единого пакета
+    Buffer --> DV: Пакет сформирован (размер пакета = M)
+else Активный пакет уже есть
+    Buffer --> DV: true (продолжается обслуживание текущего пакета)
+end
+
+DV -> Buffer: extractNextFromBatch() [Д2Б5]
+Buffer -> Buffer: Извлечение первой заявки активного пакета с позиции N
+Buffer -> Buffer: Сдвиг всех заявок с позиций N+1..K на 1 место влево (N+1 -> N) [Д1ОЗ2]
+Buffer -> Buffer: Уменьшение остатка заявок в пакете (M = M - 1)
+Buffer --> DV: Выбранная заявка возвращена для отправки на прибор
+@enduml
